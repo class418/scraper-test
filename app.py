@@ -37,4 +37,4 @@ def index():
     return render_template_string(HTML, quotes=quotes, scraped_at=scraped_at)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
