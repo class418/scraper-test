@@ -35,6 +35,8 @@ def index():
     if request.method == "POST":
         quotes = scrape_quotes()
         scraped_at = datetime.now()
+    for q in quotes:
+        print(q)
     return render_template_string(HTML, quotes=quotes, scraped_at=scraped_at)
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
