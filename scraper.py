@@ -1,27 +1,23 @@
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
 
-URL = "https://www.scrapethissite.com/pages/countries/"
+URL = "https://quotes.toscrape.com/"
 
 def main():
     res = requests.get(URL)
-    res.raise_for_status()  # エラーがあれば停止
-
+    res.raise_for_status()
     soup = BeautifulSoup(res.text, "html.parser")
 
-    countries = []
-    for country_div in soup.find_all("div", class_="country"):
-        name = country_div.find("h3", class_="country-name").text.strip()
-        population = country_div.find("span", class_="country-population").text.strip()
-        gdp = country_div.find("span", class_="country-gdp").text.strip()
-        countries.append({
-            "name": name,
-            "population": population,
-            "gdp": gdp
-        })
+    quotes = []
+    for quote_div in soup.find_all("div", class_="quote"):
+        text = quote_div.find("span", class_="text").text.strip()
+        author = quote_div.find("small", class_="author").text.strip()
+        quotes.append(f"{text} — {author}")
 
-    for c in countries:
-        print(c)
+    print(f"Scraped at {datetime.now()}")
+    for q in quotes:
+        print(q)
 
 if __name__ == "__main__":
     main()
