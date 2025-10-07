@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template_string, request
 from scraper import scrape_quotes
 from datetime import datetime
@@ -35,6 +36,5 @@ def index():
         quotes = scrape_quotes()
         scraped_at = datetime.now()
     return render_template_string(HTML, quotes=quotes, scraped_at=scraped_at)
-import os
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
