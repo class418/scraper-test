@@ -1,7 +1,6 @@
 import os
 from flask import Flask, render_template_string, request
 from scraper import fetch_subject_txt, fetch_thread
-from datetime import datetime
 
 app = Flask(__name__)
 
@@ -9,24 +8,15 @@ HTML_INDEX = """
 <!doctype html>
 <html>
 <head>
-<title>スレ一覧</title>
+<title>Edge Board Threads</title>
 </head>
 <body>
-<h1>スレ一覧</h1>
-<form method="post">
-    <button type="submit">取得</button>
-</form>
-
-{% if threads %}
-<h2>取得日時: {{ scraped_at }}</h2>
+<h1>Edge Board Threads</h1>
 <ul>
-{% for thread in threads %}
-    <li>
-        <a href="/thread/{{ thread.id }}">{{ thread.title }} — {{ thread.count }}</a>
-    </li>
+{% for t in threads %}
+    <li><a href="/thread/{{ t.dat }}">{{ t.title }}</a></li>
 {% endfor %}
 </ul>
-{% endif %}
 </body>
 </html>
 """
@@ -35,55 +25,44 @@ HTML_THREAD = """
 <!doctype html>
 <html>
 <head>
-<title>Thread {{ thread_id }}</title>
+<title>{{ posts[0].title if posts else 'Thread' }}</title>
 </head>
 <body>
 <a href="/">戻る</a>
-<hr>
-{% for num, post in posts %}
-    {% if num == 0 %}
-    <!-- タイトルは大きく表示 -->
-    <div style="margin-bottom:1em; padding:0.5em; border:1px solid #ccc; font-size:1.5em; font-weight:bold;">
-        #{{ num }} {{ post|safe }}
-    </div>
-    {% else %}
-    <div style="margin-bottom:1em; padding:0.5em; border:1px solid #ccc;">
-        <b>#{{ num }}</b><br>
-        <pre>{{ post|safe }}</pre>
-    </div>
-    {% endif %}
-{% endfor %}
+{% if posts %}
+    <h2 style="font-size:1.5em;">{{ posts[0].title }}</h2>
+    <ul>
+    {% for p in posts %}
+        <li>
+            <strong>#{{ p.num }} {{ p.name }}</strong> {{ p.date_id }}<br>
+            {{ p.content|safe }}
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>スレが見つかりません。</p>
+{% endif %}
 </body>
 </html>
 """
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
 def index():
-    threads = []
-    scraped_at = None
-    if request.method == "POST":
-        lines = fetch_subject_txt()
-        scraped_at = datetime.now()
-        for line in lines:
-            if "<>" in line:
-                dat_id, rest = line.split("<>", 1)
-                dat_id = dat_id.strip()
-                if dat_id.endswith(".dat"):
-                    dat_id = dat_id[:-4]
-                if "—" in rest:
-                    title, count = rest.split("—", 1)
-                else:
-                    title = rest
-                    count = "0レス"
-                threads.append({"id": dat_id, "title": title.strip(), "count": count.strip()})
-    return render_template_string(HTML_INDEX, threads=threads, scraped_at=scraped_at)
+    try:
+        threads = fetch_subject_txt()
+    except Exception as e:
+        threads = []
+        app.logger.error(f"Error fetching subject.txt: {e}")
+    return render_template_string(HTML_INDEX, threads=threads)
 
-
-@app.route("/thread/<thread_id>")
-def thread(thread_id):
-    posts = fetch_thread(thread_id)
-    return render_template_string(HTML_THREAD, thread_id=thread_id, posts=posts)
-
+@app.route("/thread/<dat_id>")
+def thread(dat_id):
+    try:
+        posts = fetch_thread(dat_id)
+    except Exception as e:
+        posts = []
+        app.logger.error(f"Error fetching thread {dat_id}: {e}")
+    return render_template_string(HTML_THREAD, posts=posts)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
