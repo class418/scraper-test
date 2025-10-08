@@ -26,6 +26,8 @@ def fetch_thread(dat_id):
                 text = text.replace("<br>", "\n")
                 text = text.replace("<b>", "").replace("</b>", "")
                 text = text.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&")
+                text = text.replace("<>sage<>", "sage")
+
                 posts.append((time.strip(), user_id.strip(), text.strip()))
         return posts
     except requests.RequestException as e:
