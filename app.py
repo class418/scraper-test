@@ -21,7 +21,9 @@ HTML_INDEX = """
 <h2>Scraped at {{ scraped_at }}</h2>
 <ul>
 {% for thread in threads %}
-    <li><a href="/thread/{{ thread.id }}">{{ thread.title }} — {{ thread.count }}レス</a></li>
+    <li>
+        <a href="/thread/{{ thread.id }}">{{ thread.title }} — {{ thread.count }}</a>
+    </li>
 {% endfor %}
 </ul>
 {% endif %}
@@ -49,7 +51,6 @@ HTML_THREAD = """
 </html>
 """
 
-# スレ一覧
 @app.route("/", methods=["GET", "POST"])
 def index():
     threads = []
@@ -58,17 +59,22 @@ def index():
         lines = fetch_subject_txt()
         scraped_at = datetime.now()
         for line in lines:
-            if "—" in line:
-                title, count = line.split("—", 1)
-                dat_id = title.split()[0]  # 先頭ID部分
-                threads.append({"id": dat_id, "title": title, "count": count.strip()})
+            if "<>" in line:
+                dat_id, rest = line.split("<>", 1)
+                if "—" in rest:
+                    title, count = rest.split("—", 1)
+                else:
+                    title = rest
+                    count = "0レス"
+                threads.append({"id": dat_id.strip(), "title": title.strip(), "count": count.strip()})
     return render_template_string(HTML_INDEX, threads=threads, scraped_at=scraped_at)
 
-# スレ内容表示
+
 @app.route("/thread/<thread_id>")
 def thread(thread_id):
     posts = fetch_thread(thread_id)
     return render_template_string(HTML_THREAD, thread_id=thread_id, posts=posts)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
