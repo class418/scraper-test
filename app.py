@@ -59,18 +59,17 @@ def index():
         lines = fetch_subject_txt()
         scraped_at = datetime.now()
         for line in lines:
-    if "<>" in line:
-        dat_id, rest = line.split("<>", 1)
-        dat_id = dat_id.strip()
-        if dat_id.endswith(".dat"):
-            dat_id = dat_id[:-4]  # .dat 削除
-        if "—" in rest:
-            title, count = rest.split("—", 1)
-        else:
-            title = rest
-            count = "0レス"
-        threads.append({"id": dat_id, "title": title.strip(), "count": count.strip()})
-
+            if "<>" in line:
+                dat_id, rest = line.split("<>", 1)
+                dat_id = dat_id.strip()
+                if dat_id.endswith(".dat"):
+                    dat_id = dat_id[:-4]  # .dat を削除
+                if "—" in rest:
+                    title, count = rest.split("—", 1)
+                else:
+                    title = rest
+                    count = "0レス"
+                threads.append({"id": dat_id, "title": title.strip(), "count": count.strip()})
     return render_template_string(HTML_INDEX, threads=threads, scraped_at=scraped_at)
 
 
