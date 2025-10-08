@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template_string, request
 from scraper import fetch_subject_txt, fetch_thread
+import html
 
 app = Flask(__name__)
 
@@ -25,16 +26,21 @@ HTML_THREAD = """
 <!doctype html>
 <html>
 <head>
-<title>{{ posts[0].title if posts else 'Thread' }}</title>
+<meta charset="utf-8">
+<title>{{ posts[0].content if posts else 'Thread' }}</title>
 </head>
 <body>
 <a href="/">戻る</a>
 {% if posts %}
-    <h2 style="font-size:1.5em;">{{ posts[0].title }}</h2>
+    <!-- 0レス目はタイトルとして大きく表示 -->
+    <h2 style="font-size:1.5em;">{{ posts[0].content|safe }}</h2>
+    <p><strong>{{ posts[0].name }}</strong> {{ posts[0].datetime_id }}</p>
+
+    <!-- それ以降のレス -->
     <ul>
-    {% for p in posts %}
+    {% for p in posts[1:] %}
         <li>
-            <strong>#{{ p.num }} {{ p.name }}</strong> {{ p.date_id }}<br>
+            <strong>#{{ loop.index }} {{ p.name }}</strong> {{ p.datetime_id }}<br>
             {{ p.content|safe }}
         </li>
     {% endfor %}
@@ -59,9 +65,29 @@ def index():
 def thread(dat_id):
     try:
         posts = fetch_thread(dat_id)
+
+        # 整形処理
+        for p in posts:
+            # HTMLエスケープ
+            p['content'] = html.escape(p['content'])
+
+            # <>sage<> を小さく
+            p['content'] = p['content'].replace("&lt;&gt;sage&lt;&gt;", "<small>sage</small>")
+
+            # <> を消す
+            p['content'] = p['content'].replace("&lt;&gt;", "")
+
+            # URLをリンクに変換 (http/https)
+            import re
+            p['content'] = re.sub(r"(https?://\S+)", r'<a href="\1">\1</a>', p['content'])
+
+            # 画像リンクを <img> に変換
+            p['content'] = re.sub(r'(https?://\S+\.(?:jpg|jpeg|png|gif))', r'<br><img src="\1" style="max-width:300px;"><br>', p['content'])
+
     except Exception as e:
         posts = []
         app.logger.error(f"Error fetching thread {dat_id}: {e}")
+
     return render_template_string(HTML_THREAD, posts=posts)
 
 if __name__ == "__main__":
