@@ -9,16 +9,16 @@ HTML_INDEX = """
 <!doctype html>
 <html>
 <head>
-<title>Subject.txt Scraper</title>
+<title>スレ一覧</title>
 </head>
 <body>
-<h1>Subject.txt Scraper</h1>
+<h1>スレ一覧</h1>
 <form method="post">
-    <button type="submit">Scrape Now</button>
+    <button type="submit">取得</button>
 </form>
 
 {% if threads %}
-<h2>Scraped at {{ scraped_at }}</h2>
+<h2>取得日時: {{ scraped_at }}</h2>
 <ul>
 {% for thread in threads %}
     <li>
@@ -38,14 +38,20 @@ HTML_THREAD = """
 <title>Thread {{ thread_id }}</title>
 </head>
 <body>
-<h1>Thread {{ thread_id }}</h1>
 <a href="/">戻る</a>
 <hr>
-{% for time, user_id, text in posts %}
-<div style="margin-bottom: 1em; padding: 0.5em; border:1px solid #ccc;">
-    <b>{{ time }} {{ user_id }}</b><br>
-    <pre>{{ text }}</pre>
-</div>
+{% for num, post in posts %}
+    {% if num == 0 %}
+    <!-- タイトルは大きく表示 -->
+    <div style="margin-bottom:1em; padding:0.5em; border:1px solid #ccc; font-size:1.5em; font-weight:bold;">
+        #{{ num }} {{ post|safe }}
+    </div>
+    {% else %}
+    <div style="margin-bottom:1em; padding:0.5em; border:1px solid #ccc;">
+        <b>#{{ num }}</b><br>
+        <pre>{{ post|safe }}</pre>
+    </div>
+    {% endif %}
 {% endfor %}
 </body>
 </html>
@@ -63,7 +69,7 @@ def index():
                 dat_id, rest = line.split("<>", 1)
                 dat_id = dat_id.strip()
                 if dat_id.endswith(".dat"):
-                    dat_id = dat_id[:-4]  # .dat を削除
+                    dat_id = dat_id[:-4]
                 if "—" in rest:
                     title, count = rest.split("—", 1)
                 else:
