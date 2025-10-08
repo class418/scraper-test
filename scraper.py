@@ -1,39 +1,54 @@
 import requests
-from bs4 import BeautifulSoup
 import html
 
-BASE_URL = "http://bbs.eddibb.cc/liveedge"
+SUBJECT_URL = "http://bbs.eddibb.cc/liveedge/subject.txt"
+THREAD_BASE_URL = "http://bbs.eddibb.cc/liveedge/dat/"
 
 def fetch_subject_txt():
-    """subject.txt を取得して行ごとに返す"""
-    url = f"{BASE_URL}/subject.txt"
-    res = requests.get(url)
+    """subject.txt からスレ一覧を取得"""
+    res = requests.get(SUBJECT_URL)
     res.raise_for_status()
-    text = res.text
-    return text.strip().splitlines()
-
+    lines = res.text.splitlines()
+    threads = []
+    for line in lines:
+        if "<>" in line:
+            dat, title_with_count = line.split("<>", 1)
+            title = html.unescape(title_with_count)
+            threads.append({
+                "dat": dat.strip(),
+                "title": title.strip()
+            })
+    return threads
 
 def fetch_thread(dat_id):
-    """スレッド .dat を取得して整形したリストを返す"""
-    if dat_id.endswith(".dat"):
-        dat_id = dat_id[:-4]  # 念のため
-    url = f"{BASE_URL}/dat/{dat_id}.dat"
+    """指定 dat のスレを取得・整形"""
+    url = THREAD_BASE_URL + dat_id + ".dat"
     res = requests.get(url)
     res.raise_for_status()
-    raw = res.text
-    return parse_thread(raw)
-
-
-def parse_thread(raw):
-    """raw データをレス番号付きで整形"""
+    lines = res.text.splitlines()
     posts = []
-    # <> で分割。空白や改行を除去
-    segments = [s.strip() for s in raw.split("<>") if s.strip()]
-    
-    for idx, seg in enumerate(segments):
-        # HTML エスケープ解除（絵文字復元）
-        seg = html.unescape(seg)
-        # sage を小さく灰色表示
-        seg = seg.replace("sage", "<span style='color:gray; font-size:0.8em;'>sage</span>")
-        posts.append((idx, seg))
+
+    for i, line in enumerate(lines):
+        if not line.strip():
+            continue
+        parts = line.split("<>")
+        # parts: [名前, 日付ID, 本文]
+        name = html.unescape(parts[0]) if len(parts) > 0 else ""
+        date_id = html.unescape(parts[1]) if len(parts) > 1 else ""
+        content = html.unescape(parts[2]) if len(parts) > 2 else ""
+
+        # sage を小さく
+        if "sage" in date_id:
+            date_id = date_id.replace("sage", "<small>sage</small>")
+
+        # 0レス目はタイトルとして保存
+        title = content if i == 0 else None
+
+        posts.append({
+            "num": i,
+            "name": name,
+            "date_id": date_id,
+            "content": content,
+            "title": title
+        })
     return posts
