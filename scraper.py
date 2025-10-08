@@ -1,70 +1,39 @@
 import requests
+from bs4 import BeautifulSoup
+import html
+
+BASE_URL = "http://bbs.eddibb.cc/liveedge"
 
 def fetch_subject_txt():
-    """
-    subject.txt を取得して整形済みリストを返す
-    戻り値: ["タイトル — 123レス", ...]
-    """
-    URL = "http://bbs.eddibb.cc/liveedge/subject.txt"
-    try:
-        res = requests.get(URL)
-        res.raise_for_status()
-        lines = res.text.splitlines()
-        formatted_lines = []
-
-        for line in lines:
-            if "<>" in line:
-                file_id, rest = line.split("<>", 1)
-                # タイトルとレス数を分割
-                if "(" in rest and rest.endswith(")"):
-                    title, count = rest.rsplit("(", 1)
-                    count = count.rstrip(")")
-                else:
-                    title = rest
-                    count = "0"
-                formatted_lines.append(f"{file_id}<> {title.strip()} — {count}レス")
-        return formatted_lines
-
-    except requests.RequestException as e:
-        print(f"取得エラー: {e}")
-        return []
+    """subject.txt を取得して行ごとに返す"""
+    url = f"{BASE_URL}/subject.txt"
+    res = requests.get(url)
+    res.raise_for_status()
+    text = res.text
+    return text.strip().splitlines()
 
 
 def fetch_thread(dat_id):
-    """
-    .dat ファイルを取得して整形済みリストを返す
-    dat_id: 例 "1759901460"
-    戻り値: [(time, ID, text), ...]
-    """
-    URL = f"http://bbs.eddibb.cc/liveedge/dat/{dat_id}.dat"
-    try:
-        res = requests.get(URL)
-        res.raise_for_status()
-        content = res.text
+    """スレッド .dat を取得して整形したリストを返す"""
+    if dat_id.endswith(".dat"):
+        dat_id = dat_id[:-4]  # 念のため
+    url = f"{BASE_URL}/dat/{dat_id}.dat"
+    res = requests.get(url)
+    res.raise_for_status()
+    raw = res.text
+    return parse_thread(raw)
 
-        posts = []
 
-        lines = content.splitlines()
-        for line in lines:
-            if "<>" in line:
-                parts = line.split("<>", 2)
-                if len(parts) < 3:
-                    continue
-                time, user_id, text = parts
-
-                # 不要タグ除去、改行保持
-                text = text.replace("<br>", "\n")
-                text = text.replace("<b>", "").replace("</b>", "")
-
-                # HTMLエスケープ
-                text = text.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&")
-
-                # <>sage<> を sage に置換
-                text = text.replace("<>sage<>", "sage")
-
-                posts.append((time.strip(), user_id.strip(), text.strip()))
-        return posts
-
-    except requests.RequestException as e:
-        print(f"取得エラー: {e}")
-        return []
+def parse_thread(raw):
+    """raw データをレス番号付きで整形"""
+    posts = []
+    # <> で分割。空白や改行を除去
+    segments = [s.strip() for s in raw.split("<>") if s.strip()]
+    
+    for idx, seg in enumerate(segments):
+        # HTML エスケープ解除（絵文字復元）
+        seg = html.unescape(seg)
+        # sage を小さく灰色表示
+        seg = seg.replace("sage", "<span style='color:gray; font-size:0.8em;'>sage</span>")
+        posts.append((idx, seg))
+    return posts
